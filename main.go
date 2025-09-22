@@ -46,6 +46,7 @@ func main() {
 	userService := services.NewUserService(db)
 	tokenService := services.NewTokenService(db)
 	authHandler := handlers.NewAuthHandler(userService, tokenService, jwtUtil)
+	profileHandler := handlers.NewProfileHandler(userService)
 
 	// 配置 Goth
 	goth.UseProviders(
@@ -78,10 +79,10 @@ func main() {
 	api := r.Group("/api")
 	api.Use(middlewares.JWTAuth(jwtUtil, tokenService))
 	{
-		api.GET("/profile", func(c *gin.Context) {
-			userID := c.GetString("user_id")
-			c.JSON(200, gin.H{"user_id": userID})
-		})
+		api.GET("/profile", profileHandler.GetProfile)
+		// 游戏数据相关端点
+		api.PUT("/game-data", profileHandler.UpdateGameData)
+		api.PUT("/game-data/:field", profileHandler.UpdateGameDataField)
 	}
 
 	// 启动服务器
