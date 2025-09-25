@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/providers/github"
+	"github.com/markbates/goth/providers/openidConnect"
 
 	"github.com/hanxi/gamepass/config"
 	"github.com/hanxi/gamepass/db"
@@ -56,6 +58,17 @@ func main() {
 			fmt.Sprintf("%s/auth/github/callback", cfg.BaseURL),
 		),
 	)
+	openidConnect, err := openidConnect.NewNamed(
+		"local",
+		os.Getenv("OPENID_CONNECT_KEY"),
+		os.Getenv("OPENID_CONNECT_SECRET"),
+		fmt.Sprintf("%s/auth/local-oidc/callback", cfg.BaseURL),
+		os.Getenv("OPENID_CONNECT_DISCOVERY_URL"),
+	)
+	if openidConnect == nil {
+		log.Fatal(err)
+	}
+	goth.UseProviders(openidConnect)
 
 	// 设置 Gin
 	r := gin.Default()
