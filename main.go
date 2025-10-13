@@ -87,13 +87,28 @@ func main() {
 	// 设置 Gin
 	r := gin.Default()
 
+	// 配置HTML模板
+	r.LoadHTMLGlob("templates/*")
+
+	// 配置静态文件服务
+	r.Static("/static", "./static")
+
+	// 页面路由
+	r.GET("/login", authHandler.ShowLoginPage)
+	r.GET("/register", authHandler.ShowRegisterPage)
+
 	// 认证路由
 	auth := r.Group("/auth")
 	{
 		auth.GET("/:provider", authHandler.BeginAuth)
 		auth.GET("/:provider/callback", authHandler.Callback)
 		auth.POST("/refresh", authHandler.RefreshToken)
+
+		auth.POST("/local/login", authHandler.Login)
+		auth.POST("/local/register", authHandler.Register)
+
 		auth.POST("/logout", authHandler.Logout)
+		auth.GET("/logout", authHandler.ShowLogoutPage)
 	}
 
 	// 公开路由组

@@ -16,6 +16,7 @@ type User struct {
 	ProviderID string             `bson:"provider_id" json:"provider_id"`
 	AvatarURL  string             `bson:"avatar_url" json:"avatar_url"`
 	GothUser   *goth.User         `bson:"goth_user" json:"goth_user"`
+	Password   string             `bson:"password,omitempty" json:"-"` // 本地认证密码，不在JSON中暴露
 
 	GameData bson.M `bson:"game_data" json:"game_data"` // 游戏数据
 

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1>登出成功</h1>
+                <p>您已成功登出系统</p>
+            </div>
+            
+            <div class="logout-content">
+                <div class="success-icon">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" stroke="#4CAF50" stroke-width="2"/>
+                        <path d="m9 12 2 2 4-4" stroke="#4CAF50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                
+                <p class="logout-message">感谢您的使用，页面将在 <span id="countdown">3</span> 秒后自动关闭</p>
+                
+                <div class="logout-actions">
+                    <button type="button" class="btn btn-secondary" onclick="window.close()">
+                        立即关闭
+                    </button>
+                    <a href="/login" class="btn btn-primary">
+                        重新登录
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 倒计时功能
+        let countdown = 3;
+        const countdownElement = document.getElementById('countdown');
+        
+        const timer = setInterval(() => {
+            countdown--;
+            countdownElement.textContent = countdown;
+            
+            if (countdown <= 0) {
+                clearInterval(timer);
+                // 尝试关闭窗口，如果无法关闭则跳转到登录页
+                if (window.opener) {
+                    window.close();
+                } else {
+                    window.location.href = '/login';
+                }
+            }
+        }, 1000);
+        
+        // 清除可能存在的认证相关 cookies
+        document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = 'refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = 'auth_source=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = 'auth_callback_url=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        
+        // 清除 localStorage 中的 token（如果有的话）
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+    </script>
+
+    <style>
+        .logout-content {
+            text-align: center;
+            padding: 2rem 0;
+        }
+        
+        .success-icon {
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .logout-message {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 2rem;
+            line-height: 1.5;
+        }
+        
+        #countdown {
+            font-weight: bold;
+            color: #4CAF50;
+            font-size: 1.2em;
+        }
+        
+        .logout-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .logout-actions .btn {
+            min-width: 120px;
+        }
+        
+        .btn-secondary {
+            background-color: #6c757d;
+            border-color: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #5a6268;
+            border-color: #545b62;
+        }
+        
+        @media (max-width: 480px) {
+            .logout-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .logout-actions .btn {
+                width: 100%;
+                max-width: 200px;
+            }
+        }
+    </style>
+</body>
+</html>

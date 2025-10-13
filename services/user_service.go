@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/markbates/goth"
@@ -10,14 +11,19 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/hanxi/gamepass/models"
+	"github.com/hanxi/gamepass/utils"
 )
 
 type UserService struct {
-	db *mongo.Database
+	db           *mongo.Database
+	passwordUtil *utils.PasswordUtil
 }
 
 func NewUserService(db *mongo.Database) *UserService {
-	return &UserService{db: db}
+	return &UserService{
+		db:           db,
+		passwordUtil: utils.NewPasswordUtil(),
+	}
 }
 
 // services/user_service.go
@@ -139,4 +145,78 @@ func (s *UserService) UpdateGameDataField(userID string, key string, value inter
 		update,
 	)
 	return err
+}
+
+// CreateLocalUser 创建本地用户
+func (s *UserService) CreateLocalUser(name, email, password string) (*models.User, error) {
+	// 检查邮箱是否已存在
+	existingUser, err := s.GetUserByEmail(email)
+	if err != nil && err != mongo.ErrNoDocuments {
+		return nil, err
+	}
+	if existingUser != nil {
+		return nil, errors.New("email already exists")
+	}
+
+	// 验证密码强度
+	if !s.passwordUtil.IsValidPassword(password) {
+		return nil, errors.New("password must be at least 6 characters long")
+	}
+
+	// 哈希密码
+	hashedPassword, err := s.passwordUtil.HashPassword(password)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	user := &models.User{
+		Name:      name,
+		Email:     email,
+		Provider:  "local",
+		Password:  hashedPassword,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
+	result, err := s.db.Collection("users").InsertOne(context.Background(), user)
+	if err != nil {
+		return nil, err
+	}
+
+	user.ID = result.InsertedID.(primitive.ObjectID)
+	return user, nil
+}
+
+// AuthenticateLocalUser 验证本地用户登录
+func (s *UserService) AuthenticateLocalUser(email, password string) (*models.User, error) {
+	user, err := s.GetUserByEmail(email)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, errors.New("invalid email or password")
+		}
+		return nil, err
+	}
+
+	// 检查是否为本地用户
+	if user.Provider != "local" {
+		return nil, errors.New("this email is registered with a different provider")
+	}
+
+	// 验证密码
+	if err := s.passwordUtil.CheckPassword(user.Password, password); err != nil {
+		return nil, errors.New("invalid email or password")
+	}
+
+	return user, nil
+}
+
+// GetUserByEmail 通过邮箱获取用户
+func (s *UserService) GetUserByEmail(email string) (*models.User, error) {
+	var user models.User
+	err := s.db.Collection("users").FindOne(context.Background(), bson.M{"email": email}).Decode(&user)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
 }
