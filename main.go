@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/sessions"
 	"github.com/markbates/goth"
+	"github.com/markbates/goth/gothic"
 	"github.com/markbates/goth/providers/github"
 	"github.com/markbates/goth/providers/openidConnect"
 
@@ -26,6 +28,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	store := sessions.NewCookieStore([]byte(cfg.SessionSecret))
+	store.MaxAge(86400 * 30)
+	store.Options.Path = "/"
+	store.Options.HttpOnly = false // HttpOnly should always be enabled
+	store.Options.Secure = false   // cfg.IsProd
+	store.Options.SameSite = http.SameSiteLaxMode
+	gothic.Store = store
 
 	// 初始化数据库
 	mongodb, err := db.NewMongoDB(cfg.MongoURI, cfg.DBName)
@@ -47,28 +57,32 @@ func main() {
 
 	userService := services.NewUserService(db)
 	tokenService := services.NewTokenService(db)
-	authHandler := handlers.NewAuthHandler(userService, tokenService, jwtUtil)
+	authHandler := handlers.NewAuthHandler(userService, tokenService, jwtUtil, cfg.CallbackWhitelist)
 	profileHandler := handlers.NewProfileHandler(userService)
 
 	// 配置 Goth
-	goth.UseProviders(
-		github.New(
-			cfg.GithubKey,
-			cfg.GithubSecret,
-			fmt.Sprintf("%s/auth/github/callback", cfg.BaseURL),
-		),
-	)
-	openidConnect, err := openidConnect.NewNamed(
-		"local",
-		os.Getenv("OPENID_CONNECT_KEY"),
-		os.Getenv("OPENID_CONNECT_SECRET"),
-		fmt.Sprintf("%s/auth/local-oidc/callback", cfg.BaseURL),
-		os.Getenv("OPENID_CONNECT_DISCOVERY_URL"),
-	)
-	if openidConnect == nil {
-		log.Fatal(err)
+	if cfg.GithubKey != "" {
+		goth.UseProviders(
+			github.New(
+				cfg.GithubKey,
+				cfg.GithubSecret,
+				fmt.Sprintf("%s/auth/github/callback", cfg.BaseURL),
+			),
+		)
 	}
-	goth.UseProviders(openidConnect)
+	if cfg.OpenidConnectKey != "" {
+		openidConnect, err := openidConnect.NewNamed(
+			"local",
+			cfg.OpenidConnectKey,
+			cfg.OpenidConnectSecret,
+			fmt.Sprintf("%s/auth/local-oidc/callback", cfg.BaseURL),
+			cfg.OpenidConnectDiscoveryUrl,
+		)
+		if openidConnect == nil {
+			log.Fatal(err)
+		}
+		goth.UseProviders(openidConnect)
+	}
 
 	// 设置 Gin
 	r := gin.Default()
