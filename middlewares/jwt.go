@@ -44,7 +44,7 @@ func JWTAuth(jwtUtil *utils.JWTUtil, tokenService *services.TokenService) gin.Ha
 		}
 
 		// 将用户信息存储在上下文中
-		c.Set("user_id", claims.UserID)
+		c.Set("account", claims.Account)
 		c.Set("email", claims.Email)
 
 		c.Next()

@@ -91,7 +91,7 @@ func (h *AuthHandler) checkUserLoggedIn(c *gin.Context) (*utils.TokenPair, error
 	}
 
 	// 生成新的token pair
-	newTokens, err := h.jwtUtil.GenerateTokenPair(claims.UserID, claims.Email)
+	newTokens, err := h.jwtUtil.GenerateTokenPair(claims.Account, claims.Email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate new tokens")
 	}
@@ -312,7 +312,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	}
 
 	// 生成新的 token pair
-	newTokens, err := h.jwtUtil.GenerateTokenPair(claims.UserID, claims.Email)
+	newTokens, err := h.jwtUtil.GenerateTokenPair(claims.Account, claims.Email)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return

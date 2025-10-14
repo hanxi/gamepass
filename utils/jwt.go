@@ -12,7 +12,7 @@ var (
 )
 
 type JWTClaims struct {
-	UserID    string `json:"user_id"`
+	Account   string `json:"account"`
 	Email     string `json:"email"`
 	TokenType string `json:"token_type"` // "access" or "refresh"
 	jwt.StandardClaims
@@ -48,15 +48,15 @@ func (j *JWTUtil) GetRefreshSecret() string {
 }
 
 // 生成 token pair
-func (j *JWTUtil) GenerateTokenPair(userID, email string) (*TokenPair, error) {
+func (j *JWTUtil) GenerateTokenPair(account, email string) (*TokenPair, error) {
 	// 生成访问令牌
-	accessToken, err := j.generateToken(userID, email, "access", j.accessSecret, j.accessExp)
+	accessToken, err := j.generateToken(account, email, "access", j.accessSecret, j.accessExp)
 	if err != nil {
 		return nil, err
 	}
 
 	// 生成刷新令牌
-	refreshToken, err := j.generateToken(userID, email, "refresh", j.refreshSecret, j.refreshExp)
+	refreshToken, err := j.generateToken(account, email, "refresh", j.refreshSecret, j.refreshExp)
 	if err != nil {
 		return nil, err
 	}
@@ -67,9 +67,9 @@ func (j *JWTUtil) GenerateTokenPair(userID, email string) (*TokenPair, error) {
 	}, nil
 }
 
-func (j *JWTUtil) generateToken(userID, email, tokenType, secret string, exp time.Duration) (string, error) {
+func (j *JWTUtil) generateToken(account, email, tokenType, secret string, exp time.Duration) (string, error) {
 	claims := JWTClaims{
-		UserID:    userID,
+		Account:   account,
 		Email:     email,
 		TokenType: tokenType,
 		StandardClaims: jwt.StandardClaims{
