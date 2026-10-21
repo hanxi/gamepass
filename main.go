@@ -53,6 +53,8 @@ func main() {
 		cfg.JWTRefreshSecret,
 		15*time.Minute,
 		7*24*time.Hour,
+		cfg.JWTIssuer,
+		cfg.JWTAudience,
 	)
 
 	userService := services.NewUserService(db)

@@ -19,6 +19,8 @@ type Config struct {
 	DBName                    string
 	JWTAccessSecret           string
 	JWTRefreshSecret          string
+	JWTIssuer                 string
+	JWTAudience               string
 	GithubKey                 string
 	GithubSecret              string
 	OpenidConnectKey          string
@@ -62,6 +64,8 @@ func LoadConfig() (*Config, error) {
 		DBName:                    os.Getenv("DB_NAME"),
 		JWTAccessSecret:           os.Getenv("JWT_ACCESS_SECRET"),
 		JWTRefreshSecret:          os.Getenv("JWT_REFRESH_SECRET"),
+		JWTIssuer:                 os.Getenv("JWT_ISSUER"),
+		JWTAudience:               os.Getenv("JWT_AUDIENCE"),
 		GithubKey:                 os.Getenv("GITHUB_KEY"),
 		GithubSecret:              os.Getenv("GITHUB_SECRET"),
 		OpenidConnectKey:          os.Getenv("OPENID_CONNECT_KEY"),
