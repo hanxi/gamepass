@@ -68,22 +68,16 @@ func main() {
 			github.New(
 				cfg.GithubKey,
 				cfg.GithubSecret,
-				fmt.Sprintf("%s/auth/github/callback", cfg.BaseURL),
+				handlers.ProviderCallbackURL(cfg.BaseURL, "github"),
 			),
 		)
 	}
 	if cfg.OpenidConnectKey != "" {
-		openidConnect, err := openidConnect.NewNamed(
-			"local",
-			cfg.OpenidConnectKey,
-			cfg.OpenidConnectSecret,
-			fmt.Sprintf("%s/auth/local-oidc/callback", cfg.BaseURL),
-			cfg.OpenidConnectDiscoveryUrl,
-		)
-		if openidConnect == nil {
+		oidc, err := newOIDCProvider(cfg.BaseURL, cfg.OpenidConnectKey, cfg.OpenidConnectSecret, cfg.OpenidConnectDiscoveryUrl)
+		if err != nil {
 			log.Fatal(err)
 		}
-		goth.UseProviders(openidConnect)
+		goth.UseProviders(oidc)
 	}
 
 	// 设置 Gin
@@ -134,4 +128,22 @@ func main() {
 	if err := r.Run(addr); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// newOIDCProvider 创建 OpenID Connect provider。goth 的 NewNamed 会给传入的名字自动加
+// -oidc 后缀，这里不依赖这条规则，构造后显式 SetName，保证注册名、登录入口
+// /auth/<名> 与回调 /auth/<名>/callback 三处一致
+func newOIDCProvider(baseURL, key, secret, discoveryURL string) (*openidConnect.Provider, error) {
+	p, err := openidConnect.NewNamed(
+		"",
+		key,
+		secret,
+		handlers.ProviderCallbackURL(baseURL, handlers.OIDCProvider),
+		discoveryURL,
+	)
+	if err != nil {
+		return nil, err
+	}
+	p.SetName(handlers.OIDCProvider)
+	return p, nil
 }

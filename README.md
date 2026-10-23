@@ -142,20 +142,24 @@ curl -X POST \
 
 ## 开发
 
+### 测试
+
+```bash
+go test ./...
+```
+
 ### 添加新的 OAuth 提供商
 
-在 `main.go` 中添加新的提供商：
+在 `main.go` 中添加新的提供商。回调地址用 `handlers.ProviderCallbackURL` 生成，保证与路由 `/auth/:provider/callback` 以及 provider 的注册名一致：
 
 ```go
 goth.UseProviders(
-    github.New(cfg.GithubKey, cfg.GithubSecret, cfg.GithubCallback),
+    github.New(cfg.GithubKey, cfg.GithubSecret, handlers.ProviderCallbackURL(cfg.BaseURL, "github")),
     // 添加其他提供商...
 )
 ```
 
-### 数据库迁移
-
-数据库架构变更通过 `db/migrations` 包管理。
+provider 名不能叫 `local`，`/auth/local` 留给本地账号密码登录。OpenID Connect provider 的注册名是 `local-oidc`（`handlers.OIDCProvider`），入口 `/auth/local-oidc`，回调 `/auth/local-oidc/callback`。
 
 ## 生产环境部署
 
