@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"regexp"
@@ -33,21 +34,10 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 
-	callbackWhitelist := os.Getenv("CALLBACK_WHITELIST")
-	patterns := strings.Split(callbackWhitelist, ",")
-	var compiledWhitelist []*regexp.Regexp
-	for _, p := range patterns {
-		// Trim space in case of "pattern1, pattern2"
-		trimmedPattern := strings.TrimSpace(p)
-		if trimmedPattern == "" {
-			continue
-		}
-		re, err := regexp.Compile(trimmedPattern)
-		if err != nil {
-			// 如果配置中的正则表达式无法编译，这是一个致命错误，服务器不应该启动。
-			log.Fatalf("Failed to compile whitelist regex '%s': %v", trimmedPattern, err)
-		}
-		compiledWhitelist = append(compiledWhitelist, re)
+	compiledWhitelist, err := ParseCallbackWhitelist(os.Getenv("CALLBACK_WHITELIST"))
+	if err != nil {
+		// 如果配置中的正则表达式无法编译，这是一个致命错误，服务器不应该启动。
+		log.Fatal(err)
 	}
 	isProd := false
 	if os.Getenv("PROD") == "true" {
@@ -72,4 +62,21 @@ func LoadConfig() (*Config, error) {
 		OpenidConnectSecret:       os.Getenv("OPENID_CONNECT_SECRET"),
 		OpenidConnectDiscoveryUrl: os.Getenv("OPENID_CONNECT_DISCOVERY_URL"),
 	}, nil
+}
+
+// ParseCallbackWhitelist 解析 CALLBACK_WHITELIST：逗号分隔的正则列表，每项两端空白忽略、空项跳过。
+func ParseCallbackWhitelist(raw string) ([]*regexp.Regexp, error) {
+	var compiled []*regexp.Regexp
+	for _, p := range strings.Split(raw, ",") {
+		pattern := strings.TrimSpace(p)
+		if pattern == "" {
+			continue
+		}
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compile whitelist regex '%s': %w", pattern, err)
+		}
+		compiled = append(compiled, re)
+	}
+	return compiled, nil
 }

@@ -23,7 +23,20 @@ const (
 	AuthSourceCookie      = "auth_source"
 	AccessTokenCookie     = "access_token"
 	RefreshTokenCookie    = "refresh_token"
+
+	// OIDCProvider 是 OpenID Connect provider 在 goth 里的注册名，也是它的路由段：
+	// 登录入口 /auth/local-oidc，回调 /auth/local-oidc/callback。不能叫 local——
+	// BeginAuth/Callback 把 local 留给本地账号密码登录
+	OIDCProvider = "local-oidc"
+
+	// 回调地址不在白名单时的统一报错，参数名与请求里的 callback_url 一致
+	callbackNotAllowedError = "Provided callback_url is not allowed"
 )
+
+// ProviderCallbackURL 返回第三方 provider 的回调地址，与路由 /auth/:provider/callback 对应
+func ProviderCallbackURL(baseURL, provider string) string {
+	return fmt.Sprintf("%s/auth/%s/callback", baseURL, provider)
+}
 
 type AuthHandler struct {
 	userService       *services.UserService
@@ -55,6 +68,12 @@ func (h *AuthHandler) validateCallbackURL(callbackURL string) bool {
 	return false
 }
 
+// 回调地址不在白名单：记一条安全告警并回 400
+func rejectCallbackURL(c *gin.Context, callbackURL string) {
+	fmt.Printf("SECURITY ALERT: Callback URL validation failed. Provided URL: '%s'\n", callbackURL)
+	c.JSON(400, gin.H{"error": callbackNotAllowedError})
+}
+
 // 辅助方法：处理回调URL验证和存储
 func (h *AuthHandler) handleCallbackURL(c *gin.Context, callbackURL string) error {
 	if callbackURL == "" {
@@ -62,8 +81,7 @@ func (h *AuthHandler) handleCallbackURL(c *gin.Context, callbackURL string) erro
 	}
 
 	if !h.validateCallbackURL(callbackURL) {
-		fmt.Printf("SECURITY ALERT: Callback URL validation failed. Provided URL: '%s'\n", callbackURL)
-		c.JSON(400, gin.H{"error": "Provided client_callback_url is not allowed"})
+		rejectCallbackURL(c, callbackURL)
 		return fmt.Errorf("invalid callback URL")
 	}
 
@@ -365,20 +383,9 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	// 验证回调URL（如果提供）
 	hasCallbackURL := req.CallbackURL != ""
-	if hasCallbackURL {
-		isValidCallback := false
-		for _, re := range h.callbackWhitelist {
-			if re.MatchString(req.CallbackURL) {
-				isValidCallback = true
-				break
-			}
-		}
-
-		if !isValidCallback {
-			fmt.Printf("SECURITY ALERT: Callback URL validation failed. Provided URL: '%s'\n", req.CallbackURL)
-			c.JSON(400, gin.H{"error": "Provided callback_url is not allowed"})
-			return
-		}
+	if !h.validateCallbackURL(req.CallbackURL) {
+		rejectCallbackURL(c, req.CallbackURL)
+		return
 	}
 
 	// 创建本地用户
@@ -437,20 +444,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	// 验证回调URL（如果提供）
 	hasCallbackURL := req.CallbackURL != ""
-	if hasCallbackURL {
-		isValidCallback := false
-		for _, re := range h.callbackWhitelist {
-			if re.MatchString(req.CallbackURL) {
-				isValidCallback = true
-				break
-			}
-		}
-
-		if !isValidCallback {
-			fmt.Printf("SECURITY ALERT: Callback URL validation failed. Provided URL: '%s'\n", req.CallbackURL)
-			c.JSON(400, gin.H{"error": "Provided callback_url is not allowed"})
-			return
-		}
+	if !h.validateCallbackURL(req.CallbackURL) {
+		rejectCallbackURL(c, req.CallbackURL)
+		return
 	}
 
 	// 验证用户凭据
